@@ -2,9 +2,9 @@
 # Verwaltet die CRUD-Operationen für User-E-Mails über die API
 
 class UserMailsController < ApplicationController
-  accept_api_auth :index, :show, :create, :update, :destroy
+  accept_api_auth :index, :show, :create, :update, :destroy, :search
 
-  before_action :find_user
+  before_action :find_user, :except => [:search]
   before_action :find_email_address, :only => [:show, :update, :destroy]
   before_action :authorize_global
   
@@ -55,11 +55,14 @@ class UserMailsController < ApplicationController
 
   def update
     # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
-    if params[:is_default] == true || params[:is_default] == 'true'
+    if params[:is_default] == true || params[:is_default] == 'true' || params[:is_default] == 1
       @user.email_addresses.where(:is_default => true).where.not(:id => @email_address.id).update_all(:is_default => false)
     end
     
     if @email_address.update(email_address_params)
+      # Lade das Objekt neu, um sicherzustellen, dass alle Änderungen korrekt sind
+      @email_address.reload
+      
       respond_to do |format|
         format.json {
           render :json => email_address_to_hash(@email_address)
@@ -90,6 +93,37 @@ class UserMailsController < ApplicationController
     end
   end
 
+  def search
+    email_address = params[:email] || params[:address]
+    
+    unless email_address.present?
+      respond_to do |format|
+        format.json {
+          render :json => {:error => 'E-Mail-Adresse Parameter fehlt (email oder address)'}, :status => :bad_request
+        }
+      end
+      return
+    end
+    
+    # Suche nach der E-Mail-Adresse
+    email_record = EmailAddress.find_by(:address => email_address)
+    
+    respond_to do |format|
+      format.json {
+        if email_record
+          render :json => {
+            :exists => true,
+            :user_id => email_record.user_id
+          }
+        else
+          render :json => {
+            :exists => false
+          }
+        end
+      }
+    end
+  end
+
   private
 
   def find_user
@@ -105,7 +139,14 @@ class UserMailsController < ApplicationController
   end
 
   def email_address_params
-    params.permit(:address, :is_default)
+    permitted = params.permit(:address, :is_default)
+    
+    # Konvertiere is_default zu Boolean, falls es als String kommt
+    if permitted[:is_default].present?
+      permitted[:is_default] = ActiveModel::Type::Boolean.new.cast(permitted[:is_default])
+    end
+    
+    permitted
   end
 
   def check_cannot_delete_default
@@ -128,8 +169,17 @@ class UserMailsController < ApplicationController
     }
     
     # Füge Timestamps hinzu, falls sie vorhanden sind
-    hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
-    hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+    begin
+      hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
+    rescue => e
+      # Ignoriere Fehler bei created_at
+    end
+    
+    begin
+      hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+    rescue => e
+      # Ignoriere Fehler bei updated_at
+    end
     
     hash
   end
