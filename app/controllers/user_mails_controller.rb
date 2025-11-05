@@ -94,12 +94,16 @@ class UserMailsController < ApplicationController
   end
 
   def search
-    email_address = params[:email] || params[:address]
+    # E-Mail-Adresse aus Header lesen (X-Search-Email oder X-Email-Address)
+    email_address = request.headers['X-Search-Email'] || request.headers['X-Email-Address'] || request.headers['X-Email']
+    
+    # Fallback auf Query-Parameter für Rückwärtskompatibilität
+    email_address ||= params[:email] || params[:address]
     
     unless email_address.present?
       respond_to do |format|
         format.json {
-          render :json => {:error => 'E-Mail-Adresse Parameter fehlt (email oder address)'}, :status => :bad_request
+          render :json => {:error => 'E-Mail-Adresse fehlt. Bitte verwende Header X-Search-Email oder X-Email-Address'}, :status => :bad_request
         }
       end
       return
