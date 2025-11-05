@@ -14,9 +14,3 @@ Redmine::Plugin.register :redmine_mailer_api do
   requires_redmine version_or_higher: '6.0.0'
 end
 
-# Routes für das Plugin registrieren
-Rails.application.config.to_prepare do
-  require File.expand_path('../lib/redmine_mailer_api/routes', __FILE__)
-  RedmineMailerApi::Routes.mount
-end
-
