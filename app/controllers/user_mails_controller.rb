@@ -1,22 +1,15 @@
-# Controller für User Mails API
-# Verwaltet die CRUD-Operationen für User-E-Mails über die API
-
 class UserMailsController < ApplicationController
   accept_api_auth :index, :show, :create, :update, :destroy, :search
 
   before_action :find_user, :except => [:search]
   before_action :find_email_address, :only => [:show, :update, :destroy]
   before_action :authorize_global
-  
-  # Verhindere das Löschen der letzten Standard-E-Mail
   before_action :check_cannot_delete_default, :only => [:destroy]
 
   def index
-    @email_addresses = @user.email_addresses.order(:id)
-    
     respond_to do |format|
       format.json {
-        render :json => @email_addresses.map { |ea| email_address_to_hash(ea) }
+        render :json => @user.email_addresses.order(:id).map { |ea| email_address_to_hash(ea) }
       }
     end
   end
@@ -34,7 +27,6 @@ class UserMailsController < ApplicationController
     @email_address.is_default = false if @email_address.is_default.nil?
     @email_address.notify = 0 if @email_address.notify.nil?
     
-    # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
     if @email_address.is_default == true
       @user.email_addresses.where(:is_default => true).update_all(:is_default => false)
     end
@@ -56,42 +48,14 @@ class UserMailsController < ApplicationController
 
   def update
     begin
-      # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
-      if params[:is_default] == true || params[:is_default] == 'true' || params[:is_default] == 1 || params[:is_default] == '1'
+      update_hash = build_update_hash
+      
+      if update_hash.has_key?(:is_default) && update_hash[:is_default] == true
         @user.email_addresses.where(:is_default => true).where.not(:id => @email_address.id).update_all(:is_default => false)
       end
       
-      # Setze Attribute direkt aus params
-      update_hash = {}
-      
-      if params[:address].present?
-        update_hash[:address] = params[:address]
-      end
-      
-      if params[:is_default].present?
-        is_default_value = params[:is_default]
-        # Konvertiere zu Boolean
-        if is_default_value == true || is_default_value == 'true' || is_default_value == 1 || is_default_value == '1'
-          update_hash[:is_default] = true
-        elsif is_default_value == false || is_default_value == 'false' || is_default_value == 0 || is_default_value == '0'
-          update_hash[:is_default] = false
-        end
-      end
-      
-      if params[:notify].present?
-        notify_value = params[:notify]
-        # Konvertiere zu Integer (0 oder 1)
-        if notify_value == true || notify_value == 'true' || notify_value == 1 || notify_value == '1'
-          update_hash[:notify] = 1
-        elsif notify_value == false || notify_value == 'false' || notify_value == 0 || notify_value == '0'
-          update_hash[:notify] = 0
-        end
-      end
-      
-      # Verwende update_columns um Callbacks zu umgehen
       if update_hash.any?
         @email_address.update_columns(update_hash)
-        # Lade das Objekt neu aus der Datenbank
         @email_address = @user.email_addresses.find(params[:id])
       end
       
@@ -108,10 +72,7 @@ class UserMailsController < ApplicationController
       Rails.logger.error "Error in UserMailsController#update: #{e.message}\n#{e.backtrace.join("\n")}"
       respond_to do |format|
         format.json {
-          render :json => {
-            :success => false,
-            :error => e.message
-          }, :status => :internal_server_error
+          render :json => {:success => false, :error => e.message}, :status => :internal_server_error
         }
       end
     end
@@ -134,10 +95,7 @@ class UserMailsController < ApplicationController
   end
 
   def search
-    # E-Mail-Adresse aus Header lesen (X-Search-Email oder X-Email-Address)
     email_address = request.headers['X-Search-Email'] || request.headers['X-Email-Address'] || request.headers['X-Email']
-    
-    # Fallback auf Query-Parameter für Rückwärtskompatibilität
     email_address ||= params[:email] || params[:address]
     
     unless email_address.present?
@@ -149,20 +107,14 @@ class UserMailsController < ApplicationController
       return
     end
     
-    # Suche nach der E-Mail-Adresse
     email_record = EmailAddress.find_by(:address => email_address)
     
     respond_to do |format|
       format.json {
         if email_record
-          render :json => {
-            :exists => true,
-            :user_id => email_record.user_id
-          }
+          render :json => {:exists => true, :user_id => email_record.user_id}
         else
-          render :json => {
-            :exists => false
-          }
+          render :json => {:exists => false}
         end
       }
     end
@@ -183,32 +135,56 @@ class UserMailsController < ApplicationController
   end
 
   def email_address_params
-    # Verwende to_unsafe_h für direkten Zugriff auf Parameter
     raw_params = params.to_unsafe_h
-    
     permitted = {}
     
-    # Kopiere nur erlaubte Parameter
     permitted[:address] = raw_params[:address] if raw_params.has_key?(:address)
     permitted[:is_default] = raw_params[:is_default] if raw_params.has_key?(:is_default)
     permitted[:notify] = raw_params[:notify] if raw_params.has_key?(:notify)
     
-    # Konvertiere is_default zu Boolean, falls es als String kommt
     if permitted[:is_default].present?
       permitted[:is_default] = ActiveModel::Type::Boolean.new.cast(permitted[:is_default])
     end
     
-    # Konvertiere notify zu Integer (0 oder 1)
     if permitted[:notify].present?
-      notify_value = permitted[:notify]
-      if notify_value == true || notify_value == 'true' || notify_value == 1 || notify_value == '1'
-        permitted[:notify] = 1
-      elsif notify_value == false || notify_value == 'false' || notify_value == 0 || notify_value == '0'
-        permitted[:notify] = 0
-      end
+      permitted[:notify] = integer_value(permitted[:notify], 0, 1)
     end
     
     permitted
+  end
+
+  def build_update_hash
+    update_hash = {}
+    
+    update_hash[:address] = params[:address] if params[:address].present?
+    
+    if params.has_key?(:is_default)
+      update_hash[:is_default] = boolean_value(params[:is_default])
+    end
+    
+    if params[:notify].present?
+      update_hash[:notify] = integer_value(params[:notify], 0, 1)
+    end
+    
+    update_hash
+  end
+
+  def boolean_value(value)
+    return nil if value.nil?
+    return true if value == true || value == 'true' || value == 1 || value == '1'
+    return false if value == false || value == 'false' || value == 0 || value == '0'
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def integer_value(value, min, max)
+    return nil if value.nil?
+    if value == true || value == 'true' || value == 1 || value == '1'
+      max
+    elsif value == false || value == 'false' || value == 0 || value == '0'
+      min
+    else
+      value.to_i.clamp(min, max)
+    end
   end
 
   def check_cannot_delete_default
@@ -225,54 +201,42 @@ class UserMailsController < ApplicationController
   def email_address_to_hash(email_address)
     return {} if email_address.nil?
     
+    hash = {
+      :id => email_address.id,
+      :address => email_address.address.to_s,
+      :is_default => email_address.is_default?,
+      :user_id => email_address.user_id
+    }
+    
+    hash[:notify] = email_address.notify if email_address.respond_to?(:notify) && email_address.notify.present?
+    
     begin
-      hash = {
+      hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
+    rescue
+    end
+    
+    begin
+      hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+    rescue
+    end
+    
+    hash
+  rescue => e
+    Rails.logger.error "Error in email_address_to_hash: #{e.message}"
+    begin
+      {
         :id => email_address.id,
         :address => email_address.address.to_s,
         :is_default => email_address.is_default?,
         :user_id => email_address.user_id
       }
-      
-      # Füge notify hinzu, falls vorhanden
-      begin
-        hash[:notify] = email_address.notify if email_address.respond_to?(:notify)
-      rescue => e
-        # Ignoriere Fehler bei notify
-      end
-      
-      # Füge Timestamps hinzu, falls sie vorhanden sind
-      begin
-        hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
-      rescue => e
-        # Ignoriere Fehler bei created_at
-      end
-      
-      begin
-        hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
-      rescue => e
-        # Ignoriere Fehler bei updated_at
-      end
-      
-      hash
-    rescue => e
-      Rails.logger.error "Error in email_address_to_hash: #{e.message}"
-      # Fallback: Minimale Hash-Erstellung
-      begin
-        {
-          :id => email_address.id,
-          :address => email_address.address.to_s,
-          :is_default => email_address.is_default?,
-          :user_id => email_address.user_id
-        }
-      rescue => e2
-        {
-          :id => nil,
-          :address => '',
-          :is_default => false,
-          :user_id => nil
-        }
-      end
+    rescue
+      {
+        :id => nil,
+        :address => '',
+        :is_default => false,
+        :user_id => nil
+      }
     end
   end
 end
-

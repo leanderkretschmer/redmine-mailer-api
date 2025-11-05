@@ -1,8 +1,4 @@
-# Routes für das User Mails API Plugin
-# Diese Routes werden automatisch von Redmine geladen
-
 Rails.application.routes.draw do
-  # Route für E-Mail-Suche - verwende einen eindeutigen Pfad ohne user_id
   match 'mail_search(.:format)', :to => 'user_mails#search', :via => [:get], :as => 'search_user_mail'
   
   match 'users/:user_id/mails(.:format)', :to => 'user_mails#index', :via => [:get], :as => 'user_mails'
@@ -11,4 +7,3 @@ Rails.application.routes.draw do
   match 'users/:user_id/mails/:id(.:format)', :to => 'user_mails#update', :via => [:put, :patch]
   match 'users/:user_id/mails/:id(.:format)', :to => 'user_mails#destroy', :via => [:delete]
 end
-
