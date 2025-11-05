@@ -14,10 +14,11 @@ Redmine::Plugin.register :redmine_mailer_api do
   requires_redmine version_or_higher: '6.0.0'
 end
 
-# Routes manuell registrieren, um sicherzustellen, dass sie korrekt geladen werden
+# Routes hinzufügen - Routes werden direkt registriert
 Rails.application.config.to_prepare do
   Rails.application.routes.draw do
-    # Route für E-Mail-Suche muss vor den user_id-basierten Routes stehen
+    # Route für E-Mail-Suche - verwende einen eindeutigen Pfad ohne user_id
+    # Diese Route muss vor users/:user_id/mails stehen
     match 'users/mails(.:format)', :to => 'user_mails#search', :via => [:get], :as => 'search_user_mail'
     
     match 'users/:user_id/mails(.:format)', :to => 'user_mails#index', :via => [:get], :as => 'user_mails'
