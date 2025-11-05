@@ -120,14 +120,18 @@ class UserMailsController < ApplicationController
   end
 
   def email_address_to_hash(email_address)
-    {
+    hash = {
       :id => email_address.id,
       :address => email_address.address,
       :is_default => email_address.is_default?,
-      :user_id => email_address.user_id,
-      :created_at => email_address.created_at,
-      :updated_at => email_address.updated_at
+      :user_id => email_address.user_id
     }
+    
+    # Füge Timestamps hinzu, falls sie vorhanden sind
+    hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
+    hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+    
+    hash
   end
 end
 
