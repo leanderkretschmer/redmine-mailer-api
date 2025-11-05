@@ -53,14 +53,14 @@ curl -H "X-Redmine-API-Key: YOUR_API_KEY" \
 ### E-Mail-Adresse suchen
 
 ```
-GET /users/mails.json
+GET /mail_search.json
 ```
 
 **Beispiel:**
 ```bash
 curl -H "X-Redmine-API-Key: YOUR_API_KEY" \
   -H "X-Search-Email: example@example.com" \
-  https://your-redmine-instance.com/users/mails.json
+  https://your-redmine-instance.com/mail_search.json
 ```
 
 **Header:**

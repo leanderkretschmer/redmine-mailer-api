@@ -18,8 +18,8 @@ end
 Rails.application.config.to_prepare do
   Rails.application.routes.draw do
     # Route für E-Mail-Suche - verwende einen eindeutigen Pfad ohne user_id
-    # Diese Route muss vor users/:user_id/mails stehen
-    match 'users/mails(.:format)', :to => 'user_mails#search', :via => [:get], :as => 'search_user_mail'
+    # Dieser Pfad kollidiert nicht mit users/:user_id/mails
+    match 'mail_search(.:format)', :to => 'user_mails#search', :via => [:get], :as => 'search_user_mail'
     
     match 'users/:user_id/mails(.:format)', :to => 'user_mails#index', :via => [:get], :as => 'user_mails'
     match 'users/:user_id/mails(.:format)', :to => 'user_mails#create', :via => [:post]
