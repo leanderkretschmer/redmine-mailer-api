@@ -107,13 +107,14 @@ POST /users/:user_id/mails.json
 curl -X POST \
   -H "X-Redmine-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"address": "newemail@example.com", "is_default": false}' \
+  -d '{"address": "newemail@example.com", "is_default": false, "notify": 1}' \
   https://your-redmine-instance.com/users/1/mails.json
 ```
 
 **Parameter:**
 - `address` (required): Die E-Mail-Adresse
 - `is_default` (optional): Ob dies die Standard-E-Mail ist (default: false)
+- `notify` (optional): Ob Benachrichtigungen an diese E-Mail gesendet werden sollen (0 oder 1, default: 0)
 
 ### E-Mail-Adresse aktualisieren
 
@@ -127,7 +128,7 @@ PATCH /users/:user_id/mails/:id.json
 curl -X PUT \
   -H "X-Redmine-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"address": "updated@example.com", "is_default": true}' \
+  -d '{"address": "updated@example.com", "is_default": true, "notify": 1}' \
   https://your-redmine-instance.com/users/1/mails/2.json
 ```
 

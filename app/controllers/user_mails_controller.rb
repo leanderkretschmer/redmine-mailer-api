@@ -32,6 +32,7 @@ class UserMailsController < ApplicationController
   def create
     @email_address = @user.email_addresses.build(email_address_params)
     @email_address.is_default = false if @email_address.is_default.nil?
+    @email_address.notify = 0 if @email_address.notify.nil?
     
     # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
     if @email_address.is_default == true
@@ -74,6 +75,16 @@ class UserMailsController < ApplicationController
           update_hash[:is_default] = true
         elsif is_default_value == false || is_default_value == 'false' || is_default_value == 0 || is_default_value == '0'
           update_hash[:is_default] = false
+        end
+      end
+      
+      if params[:notify].present?
+        notify_value = params[:notify]
+        # Konvertiere zu Integer (0 oder 1)
+        if notify_value == true || notify_value == 'true' || notify_value == 1 || notify_value == '1'
+          update_hash[:notify] = 1
+        elsif notify_value == false || notify_value == 'false' || notify_value == 0 || notify_value == '0'
+          update_hash[:notify] = 0
         end
       end
       
@@ -180,10 +191,21 @@ class UserMailsController < ApplicationController
     # Kopiere nur erlaubte Parameter
     permitted[:address] = raw_params[:address] if raw_params.has_key?(:address)
     permitted[:is_default] = raw_params[:is_default] if raw_params.has_key?(:is_default)
+    permitted[:notify] = raw_params[:notify] if raw_params.has_key?(:notify)
     
     # Konvertiere is_default zu Boolean, falls es als String kommt
     if permitted[:is_default].present?
       permitted[:is_default] = ActiveModel::Type::Boolean.new.cast(permitted[:is_default])
+    end
+    
+    # Konvertiere notify zu Integer (0 oder 1)
+    if permitted[:notify].present?
+      notify_value = permitted[:notify]
+      if notify_value == true || notify_value == 'true' || notify_value == 1 || notify_value == '1'
+        permitted[:notify] = 1
+      elsif notify_value == false || notify_value == 'false' || notify_value == 0 || notify_value == '0'
+        permitted[:notify] = 0
+      end
     end
     
     permitted
@@ -210,6 +232,13 @@ class UserMailsController < ApplicationController
         :is_default => email_address.is_default?,
         :user_id => email_address.user_id
       }
+      
+      # Füge notify hinzu, falls vorhanden
+      begin
+        hash[:notify] = email_address.notify if email_address.respond_to?(:notify)
+      rescue => e
+        # Ignoriere Fehler bei notify
+      end
       
       # Füge Timestamps hinzu, falls sie vorhanden sind
       begin
