@@ -54,32 +54,42 @@ class UserMailsController < ApplicationController
   end
 
   def update
-    # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
-    if params[:is_default] == true || params[:is_default] == 'true' || params[:is_default] == 1
-      @user.email_addresses.where(:is_default => true).where.not(:id => @email_address.id).update_all(:is_default => false)
-    end
-    
-    if @email_address.update(email_address_params)
-      # Lade das Objekt neu, um sicherzustellen, dass alle Änderungen korrekt sind
-      begin
-        @email_address.reload
-      rescue => e
-        # Falls reload fehlschlägt, ignorieren und fortfahren
+    begin
+      # Wenn diese E-Mail als Standard gesetzt wird, müssen alle anderen Standard-E-Mails deaktiviert werden
+      if params[:is_default] == true || params[:is_default] == 'true' || params[:is_default] == 1 || params[:is_default] == '1'
+        @user.email_addresses.where(:is_default => true).where.not(:id => @email_address.id).update_all(:is_default => false)
       end
       
+      update_params = email_address_params
+      
+      if @email_address.update(update_params)
+        # Lade das Objekt neu aus der Datenbank, um sicherzustellen, dass alle Änderungen korrekt sind
+        @email_address = @user.email_addresses.find(params[:id])
+        
+        respond_to do |format|
+          format.json {
+            render :json => {
+              :success => true,
+              :message => 'E-Mail-Adresse erfolgreich aktualisiert',
+              :email_address => email_address_to_hash(@email_address)
+            }, :status => :ok
+          }
+        end
+      else
+        respond_to do |format|
+          format.json {
+            render :json => {:success => false, :errors => @email_address.errors.full_messages}, :status => :unprocessable_entity
+          }
+        end
+      end
+    rescue => e
+      Rails.logger.error "Error in UserMailsController#update: #{e.message}\n#{e.backtrace.join("\n")}"
       respond_to do |format|
         format.json {
           render :json => {
-            :success => true,
-            :message => 'E-Mail-Adresse erfolgreich aktualisiert',
-            :email_address => email_address_to_hash(@email_address)
-          }, :status => :ok
-        }
-      end
-    else
-      respond_to do |format|
-        format.json {
-          render :json => {:success => false, :errors => @email_address.errors.full_messages}, :status => :unprocessable_entity
+            :success => false,
+            :error => e.message
+          }, :status => :internal_server_error
         }
       end
     end
@@ -173,27 +183,49 @@ class UserMailsController < ApplicationController
   end
 
   def email_address_to_hash(email_address)
-    hash = {
-      :id => email_address.id,
-      :address => email_address.address,
-      :is_default => email_address.is_default?,
-      :user_id => email_address.user_id
-    }
-    
-    # Füge Timestamps hinzu, falls sie vorhanden sind
-    begin
-      hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
-    rescue => e
-      # Ignoriere Fehler bei created_at
-    end
+    return {} if email_address.nil?
     
     begin
-      hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+      hash = {
+        :id => email_address.id,
+        :address => email_address.address.to_s,
+        :is_default => email_address.is_default?,
+        :user_id => email_address.user_id
+      }
+      
+      # Füge Timestamps hinzu, falls sie vorhanden sind
+      begin
+        hash[:created_at] = email_address.created_at if email_address.respond_to?(:created_at) && email_address.created_at
+      rescue => e
+        # Ignoriere Fehler bei created_at
+      end
+      
+      begin
+        hash[:updated_at] = email_address.updated_at if email_address.respond_to?(:updated_at) && email_address.updated_at
+      rescue => e
+        # Ignoriere Fehler bei updated_at
+      end
+      
+      hash
     rescue => e
-      # Ignoriere Fehler bei updated_at
+      Rails.logger.error "Error in email_address_to_hash: #{e.message}"
+      # Fallback: Minimale Hash-Erstellung
+      begin
+        {
+          :id => email_address.id,
+          :address => email_address.address.to_s,
+          :is_default => email_address.is_default?,
+          :user_id => email_address.user_id
+        }
+      rescue => e2
+        {
+          :id => nil,
+          :address => '',
+          :is_default => false,
+          :user_id => nil
+        }
+      end
     end
-    
-    hash
   end
 end
 
