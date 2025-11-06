@@ -10,7 +10,7 @@ Ein Redmine 6 Plugin, das die API um die Verwaltung mehrerer E-Mail-Adressen pro
 
 ## Installation
 
-1. Kopiere das Plugin-Verzeichnis in `plugins/redmine_mailer_api` deiner Redmine-Installation
+1. Kopiere das Plugin-Verzeichnis in `plugins/redmine_extended_api` deiner Redmine-Installation
 2. Führe die Migrationen aus (falls vorhanden): `rake redmine:plugins:migrate RAILS_ENV=production`
 3. Starte Redmine neu
 
