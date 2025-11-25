@@ -176,6 +176,37 @@ curl -H "X-Redmine-API-Key: YOUR_API_KEY" \
 }
 ```
 
+### Zugewiesenen Kontakt eines Tickets setzen
+
+```
+PUT /issues/:issue_id/assigned_contact.json
+POST /issues/:issue_id/assigned_contact.json
+```
+
+Parameter:
+- `contact_id` (required): ID des Kontakts, der dem Ticket zugewiesen werden soll
+
+Dieser Endpoint schreibt in die Datenbanktabelle `assigned_contacts` und ermöglicht ein Upsert der Zuordnung.
+
+**Beispiel:**
+```bash
+curl -X PUT \
+  -H "X-Redmine-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"contact_id": 987}' \
+  https://your-redmine-instance.com/issues/1234/assigned_contact.json
+```
+
+**Erfolgsantwort:**
+```json
+{
+  "success": true,
+  "issue_id": 1234,
+  "contact_id": 987,
+  "contact_name": "Max Muster"
+}
+```
+
 ## Authentifizierung
 
 Alle API-Endpunkte erfordern eine Authentifizierung über:
@@ -192,6 +223,7 @@ Benutzer benötigen globale Administratorrechte oder entsprechende Berechtigunge
 - Ruby on Rails (Version abhängig von Redmine-Version)
 - Optional: Plugin zur Kontakt-Zuweisung. Dieses Plugin unterstützt die Zuweisung und Abfrage über `redmine_contact_assigner`:
 - `https://github.com/leanderkretschmer/redmine_contact_assigner`
+  Die Abfrage und das Setzen erfolgen über die Tabelle `assigned_contacts`.
 
 ## Lizenz
 
