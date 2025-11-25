@@ -6,4 +6,5 @@ Rails.application.routes.draw do
   match 'users/:user_id/mails/:id(.:format)', :to => 'user_mails#show', :via => [:get], :as => 'user_mail'
   match 'users/:user_id/mails/:id(.:format)', :to => 'user_mails#update', :via => [:put, :patch]
   match 'users/:user_id/mails/:id(.:format)', :to => 'user_mails#destroy', :via => [:delete]
+  match 'issues/:issue_id/assigned_contact(.:format)', :to => 'assigned_contacts#show', :via => [:get], :as => 'issue_assigned_contact'
 end

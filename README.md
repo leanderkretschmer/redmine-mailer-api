@@ -7,6 +7,7 @@ Ein Redmine 6 Plugin, das die API um die Verwaltung mehrerer E-Mail-Adressen pro
 - **CRUD-Operationen für User-E-Mails**: Vollständige API-Unterstützung zum Erstellen, Lesen, Aktualisieren und Löschen von E-Mail-Adressen
 - **Mehrere E-Mails pro User**: Unterstützung für zusätzliche E-Mail-Adressen neben der Standard-E-Mail
 - **RESTful API**: Saubere REST-API-Endpunkte im JSON-Format
+- **Kontakt-Zuweisung zu Tickets**: Abfrage des zugewiesenen Kontakts zu einem Ticket
 
 ## Installation
 
@@ -141,7 +142,38 @@ DELETE /users/:user_id/mails/:id.json
 ```bash
 curl -X DELETE \
   -H "X-Redmine-API-Key: YOUR_API_KEY" \
-  https://your-redmine-instance.com/users/1/mails/2.json
+https://your-redmine-instance.com/users/1/mails/2.json
+```
+
+### Zugewiesenen Kontakt eines Tickets abrufen
+
+```
+GET /issues/:issue_id/assigned_contact.json
+```
+
+Mit diesem Endpoint kann für ein Ticket der zugewiesene Kontakt abgefragt werden. Es werden sowohl die Kontakt-ID als auch der Name zurückgegeben.
+
+**Beispiel:**
+```bash
+curl -H "X-Redmine-API-Key: YOUR_API_KEY" \
+  https://your-redmine-instance.com/issues/1234/assigned_contact.json
+```
+
+**Antwort wenn gefunden:**
+```json
+{
+  "issue_id": 1234,
+  "contact_id": 987,
+  "contact_name": "Max Muster"
+}
+```
+
+**Antwort wenn nicht gefunden:**
+```json
+{
+  "issue_id": 1234,
+  "exists": false
+}
 ```
 
 ## Authentifizierung
@@ -158,6 +190,8 @@ Benutzer benötigen globale Administratorrechte oder entsprechende Berechtigunge
 
 - Redmine 6.0.0 oder höher
 - Ruby on Rails (Version abhängig von Redmine-Version)
+- Optional: Plugin zur Kontakt-Zuweisung. Dieses Plugin unterstützt die Zuweisung und Abfrage über `redmine_contact_assigner`:
+- `https://github.com/leanderkretschmer/redmine_contact_assigner`
 
 ## Lizenz
 
@@ -166,4 +200,3 @@ Dieses Plugin steht unter der MIT-Lizenz.
 ## Support
 
 Bei Fragen oder Problemen bitte ein Issue im Repository erstellen.
-
